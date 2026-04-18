@@ -1,0 +1,86 @@
+id: case_001
+vehicle:
+  year: 2009
+  make: Honda
+  model: Accord
+  engine: 2.4L I4
+  mileage: 134000
+
+customer:
+  name: Brenda K.
+  complaint: "Hard to start in the morning, fine once warmed up"
+  follow_up:
+    - trigger: "call customer"
+      response: >
+        Brenda picks up on the second ring. "Oh yeah, it's been
+        going on maybe three weeks? It cranks and cranks before it
+        catches. And lately there's this smell — kind of fuel-ish?
+        My husband thinks it's the battery but it turns over fine."
+
+payout: 180
+time_limit: 120
+
+fault_tree:
+  root:
+    component: fuel_injector_3
+    fault: leaking
+    causes:
+      - symptom: hard_cold_start
+      - symptom: fuel_smell
+      - secondary:
+          component: fuel_pressure_residual
+          fault: low_overnight
+          causes:
+            - test_result:
+                test: fuel_pressure
+                finding: bleed_down
+                detail: "Key-on: 58 psi (spec 47-53 psi, slightly high). After 8hrs: 31 psi. Pressure is bleeding off overnight."
+
+red_herrings:
+  - component: oxygen_sensor_upstream
+    description: "Slightly lazy response time but within acceptable range. Will appear marginal on a scope."
+  - component: battery
+    description: "Battery tests fine. Customer's husband is wrong."
+
+solution:
+  root_component: fuel_injector_3
+  required_findings:
+    - fuel_pressure_bleed_down
+  required_repair: fuel_injector_3
+  acceptable_repairs:
+    - fuel_injectors_all
+  wrong_repairs:
+    - oxygen_sensor_upstream
+    - battery
+    - fuel_pressure_regulator
+
+commands:
+  inspect:
+    engine_bay: "Engine bay is clean enough. Oil cap looks a bit grimy but nothing alarming. No obvious leaks on the surface."
+    undercar: "Nothing dripping. Exhaust looks intact. You catch a faint whiff of raw fuel near the front of the engine."
+  listen:
+    idle: "Idle sounds smooth. No obvious misfire, no tick, no knock. Hard to fault it sitting here."
+    cranking: "Long crank — 3-4 seconds before it fires. Once running, no issues."
+  smell:
+    exhaust: "Slight fuel smell in the exhaust, more than you'd expect. Not horrible, but it's there."
+    engine_bay: "Definite fuel smell near the intake manifold area. Not a gusher, but something is weeping fuel."
+  check:
+    fluids: "Engine oil: OK (a little dark, due for a change). Coolant: OK. Brake fluid: OK. No fuel in the oil."
+    battery: "Battery: 12.6V at rest. Cranking voltage: 10.2V. Load test: PASS. Battery is fine."
+    spark_plugs: "You pull the plugs. #3 is slightly darker than the others — could be a rich condition on that cylinder."
+  scan:
+    obd2: "Scanning... No codes present. No pending codes. Readiness monitors: all set."
+  test:
+    fuel_pressure: "FINDING LOGGED: fuel_pressure_bleed_down\n\n  Running fuel pressure test...\n\n  Key-on pressure  : 58 psi   [!] spec: 47–53 psi  (slightly high)\n  Running pressure : 55 psi   [!] still a bit high\n  Key-off, 8hr sim : 31 psi   [✗] pressure bled off significantly\n\n  Normal systems hold 45+ psi for hours after shutdown.\n  Pressure loss this fast points to a leaking injector,\n  failed check valve in the pump, or a leaking fuel pressure\n  regulator. Combined with the fuel smell: injector is the\n  prime suspect."
+    compression: "Compression test (cranking, all plugs out):\n  Cyl 1: 178 psi\n  Cyl 2: 180 psi\n  Cyl 3: 171 psi   [~] slightly lower but within 10%\n  Cyl 4: 179 psi\n\n  Compression is acceptable. Not the smoking gun, but\n  #3 being slightly low is consistent with a fouled plug\n  or minor ring wear — not a primary concern right now."
+    injector_balance: "Running injector balance test... This takes a few minutes.\n\n  Injector 1: -2.1%  [OK]\n  Injector 2: -1.8%  [OK]\n  Injector 3: -8.4%  [!]  outside acceptable range (±4%)\n  Injector 4: -1.5%  [OK]\n\n  Injector 3 is delivering significantly more fuel than\n  commanded. Consistent with a leaking or stuck-open injector.\n  This is your root cause."
+  scope:
+    injector_3: "Scoping injector 3 waveform...\n\n  On-time looks normal during operation, but watch the\n  resting state: there's a slight current bleed even\n  when the injector should be fully closed. The pintle\n  isn't seating cleanly. This injector is weeping fuel\n  into the cylinder when the engine is off."
+    oxygen_sensor: "Upstream O2 sensor waveform:\n\n  Switching frequency: 0.7 Hz  [~]  spec: 0.5–1.0 Hz\n  Voltage swing: 0.1V–0.85V  [OK]\n\n  It's on the slower end but technically within spec.\n  This sensor is not your problem."
+  manual:
+    fuel_system: "HONDA ACCORD 2.4L — FUEL SYSTEM\n\n  Fuel pressure spec (key-on, engine off): 47–53 psi\n  Residual pressure after 1hr: should hold above 43 psi\n\n  Pressure bleed-down diagnosis:\n  — Rapid bleed (< 30 min): suspect leaking injector(s)\n    or failed anti-drainback valve in fuel pump\n  — Slow bleed (1–3 hrs): suspect fuel pressure regulator\n\n  Injector balance spec: ± 4% across all cylinders\n  Injector replacement: recommend replacing all 4 as a set\n    if one is found faulty at this mileage."
+    ignition: "HONDA ACCORD 2.4L — IGNITION SYSTEM\n\n  Spark plug type: NGK IZFR6K-11 (iridium)\n  Gap: 0.044 in\n  Torque: 13 ft-lbs\n  Replacement interval: 105,000 miles (this vehicle is overdue)\n\n  Coil-on-plug design. No distributor."
+  tsb:
+    hard_start: "TSB Search: 'hard start cold'\n\n  TSB #07-011  Honda Accord 2003–2007  2.4L\n    Subject: Extended crank time, cold start\n    Fix: Updated ECM calibration\n    Note: Does NOT apply to 2009 model year.\n\n  TSB #12-048  Honda Accord 2008–2012  2.4L\n    Subject: Fuel pressure bleed-down, hard cold start,\n             fuel odor after shutdown\n    Fix: Inspect injectors for internal leak; replace\n         as necessary. Updated injector part number.\n    [RELEVANT — applies to this vehicle]"
+  forums:
+    hard_start_accord: "Searching forums: 'accord 2.4 hard start cold'...\n\n  HondaTech.net — '09 Accord cranks long when cold'\n  User AccordGuy2012: \"Check your VTEC solenoid bro\"\n  User HondaMechLA:  \"Had this exact issue. Fuel pressure\n                      test first. Mine was a leaking injector.\n                      Classic symptom on these.\"\n  User TunerKid99:   \"Could be your MAF sensor, clean it\"\n  User HondaMechLA:  \"No it's not the MAF lol\"\n\n  [Mixed results. HondaMechLA seems to know what they're\n   talking about. VTEC and MAF suggestions look like noise.]"
