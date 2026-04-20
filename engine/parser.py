@@ -7,6 +7,7 @@ from engine.commands import (
     cmd_manual, cmd_tsb, cmd_forums,
     cmd_replace, cmd_flush,
     cmd_done, cmd_job, cmd_status, cmd_help, cmd_findings,
+    cmd_save, cmd_load,
 )
 
 # Primary command -> handler
@@ -29,6 +30,8 @@ COMMANDS: Dict[str, Callable] = {
     "status":   cmd_status,
     "help":     cmd_help,
     "findings": cmd_findings,
+    "save": cmd_save,
+    "load": cmd_load,
 }
 
 # Centralized alias mapping (alias -> canonical)

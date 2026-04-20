@@ -1,5 +1,7 @@
 from .cmd_inspect import cmd_inspect
 from .cmd_listen import cmd_listen
+from .cmd_load import cmd_load
+from .cmd_save import cmd_save
 from .cmd_smell import cmd_smell
 from .cmd_check import cmd_check
 from .cmd_scan import cmd_scan

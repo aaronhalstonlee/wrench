@@ -103,6 +103,10 @@ def main():
 
         try:
             result = handler(args, state)
+            
+            if result.text == "__LOAD_STATE__":
+                state = result.finding
+                continue
         except Exception:
             display.render_error("Command raised an exception.")
             traceback.print_exc()
