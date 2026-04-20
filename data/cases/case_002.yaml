@@ -1,0 +1,105 @@
+id: case_002
+vehicle:
+  year: 2014
+  make: Ford
+  model: F-150
+  engine: 5.0L V8
+  mileage: 98000
+
+customer:
+  name: Dale M.
+  complaint: "Stalls out of nowhere, mostly sitting at a light. Won't restart for like 15 minutes then acts fine"
+  follow_up:
+    - trigger: "call customer"
+      response: >
+        Dale answers right away. "Yeah it's been going on maybe
+        a month. Only happens after it's been running a while —
+        like if I just started it up it's fine. It's always at
+        idle, never on the highway. And when it dies, it just
+        cuts out completely — no sputtering, nothing. Like
+        someone flipped a switch. I had it scanned at AutoZone,
+        they said something about a lean code?"
+
+payout: 220
+time_limit: 150
+
+fault_tree:
+  root:
+    component: crankshaft_position_sensor
+    fault: heat_soak_failure
+    causes:
+      - symptom: intermittent_stall_warm
+      - symptom: no_restart_15min
+      - symptom: clean_cold_start
+      - secondary:
+          component: fuel_trim
+          fault: lean_code_p0171
+          causes:
+            - test_result:
+                test: obd2_scan
+                finding: code_p0171
+                detail: "P0171 system lean bank 1 — logged during stall events. Red herring: lean condition is a symptom of the engine cutting out, not a cause."
+      - secondary:
+          component: ckp_sensor_resistance
+          fault: resistance_out_of_spec_when_hot
+          causes:
+            - test_result:
+                test: ckp_sensor
+                finding: ckp_resistance_high_hot
+                detail: "Cold resistance: 820 ohms (spec 750-900). Hot resistance: 2,340 ohms (spec 750-900). Sensor internals breaking down under heat."
+
+red_herrings:
+  - component: idle_air_control_valve
+    description: "Dirty but functional. Stall pattern doesn't match IAC failure — IAC issues cause rough idle and gradual stall, not sudden cutout."
+  - component: mass_airflow_sensor
+    description: "P0171 code makes MAF look suspicious. Sensor reads correctly across the RPM range. Cleaning it won't fix anything."
+  - component: fuel_pump
+    description: "Fuel pressure holds correctly at hot idle. Easy to blame but not the cause."
+
+solution:
+  root_component: crankshaft_position_sensor
+  required_findings:
+    - ckp_resistance_high_hot
+  required_repair: crankshaft_position_sensor
+  acceptable_repairs:
+    - crankshaft_position_sensor
+  wrong_repairs:
+    - idle_air_control_valve
+    - mass_airflow_sensor
+    - fuel_pump
+    - throttle_body
+
+commands:
+  inspect:
+    engine_bay: "Clean engine bay for the mileage. No obvious leaks. Wiring looks intact. Nothing jumps out visually — this one won't give itself up easy."
+    undercar: "Exhaust looks fine. No fuel smell underneath. Nothing dripping."
+  listen:
+    idle: "Idle sounds solid. 650 RPM, steady. No stumble, no roughness. Hard to believe it stalls — sitting here it sounds perfectly healthy."
+    cranking: "Cold start cranks and fires in under a second. No issues."
+  smell:
+    exhaust: "Normal exhaust smell. Nothing rich, nothing burning."
+    engine_bay: "Faint hot oil smell — normal for a V8 at temperature. Nothing chemical or electrical."
+  check:
+    fluids: "Engine oil: OK, clean. Coolant: OK. Brake fluid: OK. Fuel pressure at idle: 58 psi — within spec."
+    battery: "Battery: 12.7V at rest. Alternator output: 14.1V running. Both fine."
+    spark_plugs: "Plugs are maybe 20k old. All look consistent — light tan, normal wear. Not the issue."
+    iac_valve: "Idle air control valve is carboned up but moving freely. Doesn't explain a sudden complete cutout."
+  scan:
+    obd2: "FINDING LOGGED: code_p0171\n\nScanning... \n\n  P0171  —  System Too Lean, Bank 1  [STORED]\n  P0316  —  Misfire Detected on Startup  [STORED]\n\n  No pending codes. No current codes.\n\n  Note: Both codes are stored, not active. P0316 on\n  startup misfire is consistent with a hard restart\n  after a stall event — engine flooded slightly."
+  test:
+    fuel_pressure: "Running fuel pressure test at hot idle...\n\n  Base pressure  : 58 psi  [OK]  spec: 55-65 psi\n  Pressure drop  : 2 psi over 10 min  [OK]\n\n  Fuel delivery looks solid. Pump is not the issue."
+    ckp_sensor: "FINDING LOGGED: ckp_resistance_high_hot\n\nTesting crankshaft position sensor resistance...\n\n  Cold resistance (ambient) : 820 ohms  [OK]  spec: 750-900\n  Hot resistance (at temp)  : 2,340 ohms  [!!] spec: 750-900\n\n  Resistance climbs dramatically as the sensor heats\n  up. At ~2,300 ohms the PCM loses the crank signal\n  entirely — engine cuts out. Signal returns once the\n  sensor cools back down (~15 min).\n\n  This is your root cause. Classic heat-soak failure\n  on the Ford 5.0L CKP sensor."
+    maf_sensor: "Testing MAF sensor output across RPM range...\n\n  800 RPM  :  3.1 g/s   [OK]\n  1500 RPM :  7.8 g/s   [OK]\n  2500 RPM :  16.2 g/s  [OK]\n  3500 RPM :  26.4 g/s  [OK]\n\n  MAF output is linear and within spec. The P0171\n  code is not coming from a bad MAF sensor."
+    compression: "Compression test (all 8 cylinders):\n\n  Cyl 1: 182 psi  Cyl 2: 180 psi\n  Cyl 3: 183 psi  Cyl 4: 179 psi\n  Cyl 5: 181 psi  Cyl 6: 182 psi\n  Cyl 7: 177 psi  Cyl 8: 180 psi\n\n  Excellent compression across the board. Engine\n  internals are in great shape."
+  scope:
+    ckp_sensor: "Scoping CKP sensor signal (engine hot, at idle)...\n\n  Cold signal  : Clean 12V square wave, 48 pulses/rev  [OK]\n  Hot signal   : Wave amplitude dropping... degrading...\n                 Signal lost completely at temp.\n\n  PCM cannot calculate engine position or timing\n  without this signal. Immediate stall."
+    maf_sensor: "MAF sensor waveform looks clean. Voltage scales\n  correctly with airflow. Not the issue."
+  manual:
+    fuel_system: "FORD F-150 5.0L — FUEL SYSTEM\n\n  Base fuel pressure spec: 55-65 psi\n  Residual pressure (30 min): should hold above 50 psi\n\n  P0171 on this platform:\n  Common causes: vacuum leak, MAF sensor, low fuel\n  pressure, injector issues, CKP-related misfires\n  that skew fuel trim data."
+    ignition: "FORD F-150 5.0L — IGNITION / CKP\n\n  Crankshaft position sensor type: magnetic reluctor\n  Resistance spec (cold & hot): 750-900 ohms\n  Location: passenger side of block, near flywheel\n\n  IMPORTANT: CKP sensors on the Coyote 5.0L are\n  known to fail in a heat-soak pattern. Resistance\n  increases with temperature until PCM loses signal.\n  Vehicle stalls and will not restart until sensor\n  cools. Often throws no active codes during failure\n  event — stored lean/misfire codes appear afterward\n  from the stall itself."
+  tsb:
+    stall: "TSB Search: 'stall warm idle'\n\n  TSB #14-0089  Ford F-150 2011–2016  5.0L Coyote\n    Subject: Intermittent stall at warm idle, no-start\n             for 10-20 minutes after stall event\n    Cause:   Crankshaft position sensor resistance\n             exceeds PCM threshold under heat soak\n    Fix:     Replace CKP sensor. Updated part number\n             with improved heat-resistant housing.\n    [RELEVANT — applies to this vehicle]\n\n  TSB #13-0234  Ford F-150 2011–2014  5.0L\n    Subject: P0171/P0174 lean codes, rough idle\n    Cause:   PCV system cracking\n    Note:    Check PCV hose condition — secondary item\n             to inspect while in the area."
+    lean_code: "TSB Search: 'P0171 F-150'\n\n  Multiple TSBs for P0171 on this platform.\n  Most common causes at this mileage:\n  1. Vacuum leak (intake manifold, PCV hoses)\n  2. Dirty/failed MAF sensor\n  3. Low fuel pressure\n  4. CKP-related stall events skewing long-term\n     fuel trim data\n\n  If fuel pressure and MAF test clean, the lean\n  code is likely a downstream symptom, not the root."
+  forums:
+    stall_f150: "Searching forums: 'F-150 5.0 stall warm idle no restart'\n\n  F150Forum.com — 'Random stalls, have to wait to restart'\n  User BluOvalMike:  \"Check your CKP sensor resistance\n                     hot vs cold. These things fail with\n                     heat on the Coyote. Classic symptom.\"\n  User DieselDave99:  \"Mine did this for months. Shop\n                      kept telling me it was the IAC.\n                      Finally a different shop tested\n                      the CKP hot — resistance was way\n                      off. $40 part, done.\"\n  User FordTechTX:   \"P0171 is a red herring here.\n                      Lean code is from the stall, not\n                      the cause of it.\"\n\n  [Strong consensus pointing at CKP sensor. The\n   lean code being a symptom is confirmed by multiple\n   experienced users.]"
+    lean_code_f150: "Searching forums: 'F-150 P0171 fix'\n\n  F150Forum.com — 'P0171 help, tried everything'\n  User Wrench4Life: \"Check for vacuum leaks first.\n                    Smoke test the intake.\"\n  User FordGuyFL:   \"Cleaned my MAF, fixed it.\"\n  User 5pointOhYeah: \"If it only happens warm and the\n                      car just cuts out clean, I'd be\n                      looking at CKP before MAF. P0171\n                      alone could be anything.\"\n\n  [Mixed results. Vacuum leak and MAF suggestions\n   are reasonable but don't match the symptom pattern\n   of sudden complete cutout only when warm.]"
