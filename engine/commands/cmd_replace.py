@@ -4,6 +4,7 @@ from .shared import (
 )
 
 def cmd_replace(args, state):
+    print("loaded parts aliases:", PART_ALIASES)
     if not state.active_job:
         return no_job()
     if not args:
